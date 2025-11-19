@@ -1,0 +1,116 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.notes</groupId>
+    <artifactId>notes-app</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Adjust this if your class uses a different version -->
+        <java.version>17</java.version>
+
+        <!-- JavaFX version -->
+        <javafx.version>21</javafx.version>
+
+        <!-- JUnit 5 version -->
+        <junit.jupiter.version>5.10.2</junit.jupiter.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- JavaFX: UI Controls -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- JavaFX: FXML (optional but useful if you use FXML later) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- Gson (optional) for JSON storage if you decide to implement it -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+
+        <!-- JUnit 5 API -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 engine (needed to actually run tests) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Optional: parameterized tests, if you use them -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- Java compiler config -->
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+
+            <!-- JavaFX Maven Plugin to run the UI -->
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.8</version>
+                <configuration>
+                    <!-- Update this to your actual JavaFX main class if different -->
+                    <mainClass>com.notes.ui.NotesApp</mainClass>
+                </configuration>
+            </plugin>
+
+            <!-- Surefire: runs unit tests AND *IT integration tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                    <includes>
+                        <!-- standard unit tests -->
+                        <include>**/*Test.java</include>
+                        <!-- your integration test classes ending with IT -->
+                        <include>**/*IT.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>
