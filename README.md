@@ -1,7 +1,9 @@
-Source Code Refactoring:
+Feature 1 (Viet Nguyen) – Sections (Organizing Notes by Category)
+New Classes: Section, SectionRepository
+New Relationships:
+- SectionRepository ↔ LocalStorage
+- AppController → SectionRepository (integration w/ facade)
 
-- Strategy Pattern – SortPreference + SortOrder allow pluggable note-sorting behavior.
-- Facade Pattern – AppController hides complexity of repository, trash, search, and sorting from the UI.
-- Adapter Pattern – InMemoryLocalStorage adapts file-based persistence to the LocalStorage interface.
-- Singleton Pattern – SearchIndex ensures only one search index instance is used across the app.
-- Memento Pattern – Note (originator), NoteMemento (memento), and Trash (caretaker) capture and manage snapshots of deleted/previous note state.
+New AppController Methods: 
+- listSections, createSection, renameSection, deleteSection, setActiveSection, getActiveSection, moveNoteToSection
+- Note Update: Added sectionId field to link each note to its assigned section.
