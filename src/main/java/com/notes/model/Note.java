@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-// Memento Pattern: Originator
+// Memento Pattern: Originator for Note.java + Trash.java + NoteMemento.java
 public class Note implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -117,3 +117,4 @@ public class Note implements Serializable {
         return title;
     }
 }
+
