@@ -12,19 +12,22 @@ public class NoteMemento implements Serializable {
     private final Instant createdAt;
     private final Instant updatedAt;
     private final Instant deletedAt;
+    private final String sectionId;
 
     public NoteMemento(String id,
                        String title,
                        String content,
                        Instant createdAt,
                        Instant updatedAt,
-                       Instant deletedAt) {
+                       Instant deletedAt,
+                       String sectionId) {
         this.id = id;
         this.title = title;
         this.content = content;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.deletedAt = deletedAt;
+        this.sectionId = sectionId;
     }
 
     public String getId() {
@@ -49,5 +52,9 @@ public class NoteMemento implements Serializable {
 
     public Instant getDeletedAt() {
         return deletedAt;
+    }
+
+    public String getSectionId() {
+        return sectionId;
     }
 }

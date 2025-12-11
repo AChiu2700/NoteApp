@@ -65,6 +65,19 @@ public class NoteRepository {
                 .collect(Collectors.toList());
     }
 
+    public List<Note> listBySection(String sectionId) {
+        Map<String, Note> notes = load();
+        return notes.values().stream()
+                .filter(n -> !n.isDeleted())
+                .filter(n -> {
+                    if (sectionId == null) {
+                        return n.getSectionId() == null;
+                    }
+                    return sectionId.equals(n.getSectionId());
+                })
+                .collect(Collectors.toList());
+    }
+
     public void save(Note note) {
         if (note == null) return;
         Map<String, Note> notes = load();
@@ -75,9 +88,7 @@ public class NoteRepository {
     public void moveToTrash(String noteId) {
         Map<String, Note> notes = load();
         Note note = notes.get(noteId);
-        if (note == null) {
-            return;
-        }
+        if (note == null) return;
         note.markDeleted(clock.now());
         notes.put(note.getId(), note);
         saveAll(notes);
@@ -86,9 +97,7 @@ public class NoteRepository {
     public void restoreFromTrash(String noteId) {
         Map<String, Note> notes = load();
         Note note = notes.get(noteId);
-        if (note == null) {
-            return;
-        }
+        if (note == null) return;
         note.clearDelete();
         notes.put(note.getId(), note);
         saveAll(notes);

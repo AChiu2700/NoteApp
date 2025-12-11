@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-// Memento Pattern: Originator for Note.java + Trash.java + NoteMemento.java
+// Memento Pattern: Note.java + NoteMemento.java + Trash.java
 public class Note implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -15,9 +15,10 @@ public class Note implements Serializable {
     private final Instant createdAt;
     private Instant updatedAt;
     private Instant deletedAt;
+    private String sectionId;
 
     public Note(String title, String content, Instant now) {
-        this(UUID.randomUUID().toString(), title, content, now, now, null);
+        this(UUID.randomUUID().toString(), title, content, now, now, null, null);
     }
 
     public Note(String id,
@@ -26,12 +27,23 @@ public class Note implements Serializable {
                 Instant createdAt,
                 Instant updatedAt,
                 Instant deletedAt) {
+        this(id, title, content, createdAt, updatedAt, deletedAt, null);
+    }
+
+    public Note(String id,
+                String title,
+                String content,
+                Instant createdAt,
+                Instant updatedAt,
+                Instant deletedAt,
+                String sectionId) {
         this.id = id;
         this.title = title;
         this.content = content;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.deletedAt = deletedAt;
+        this.sectionId = sectionId;
     }
 
     public String getId() {
@@ -58,6 +70,15 @@ public class Note implements Serializable {
         return deletedAt;
     }
 
+    public String getSectionId() {
+        return sectionId;
+    }
+
+    public void setSectionId(String sectionId) {
+        this.sectionId = sectionId;
+        this.updatedAt = Instant.now();
+    }
+
     public void updateTitle(String title) {
         this.title = title;
         this.updatedAt = Instant.now();
@@ -81,12 +102,11 @@ public class Note implements Serializable {
         return deletedAt != null;
     }
 
-    // Memento Pattern: create memento snapshot
     public NoteMemento createMemento() {
-        return new NoteMemento(id, title, content, createdAt, updatedAt, deletedAt);
+        return new NoteMemento(id, title, content, createdAt, updatedAt, deletedAt, sectionId);
     }
 
-    // Memento Pattern: restore from snapshot (but keep note active)
+    // Memento Pattern: restore from snapshot
     public void restore(NoteMemento memento) {
         if (memento == null || !Objects.equals(this.id, memento.getId())) {
             return;
@@ -94,7 +114,7 @@ public class Note implements Serializable {
         this.title = memento.getTitle();
         this.content = memento.getContent();
         this.updatedAt = memento.getUpdatedAt();
-        // do NOT restore deletedAt; it stays cleared so note is active after restore
+        this.sectionId = memento.getSectionId();
     }
 
     @Override
@@ -117,4 +137,3 @@ public class Note implements Serializable {
         return title;
     }
 }
-
