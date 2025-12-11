@@ -1,5 +1,5 @@
 @startuml
-title Class Diagram: Note App with Sections and Manual Sort (Note-Centered)
+title Class Diagram: Note App with Sections, Move & Sort (Note-Centered)
 skinparam classAttributeIconSize 0
 skinparam linetype ortho
 skinparam nodesep 100
@@ -15,17 +15,14 @@ class Note <<originator>> {
   - content: String
   - createdAt: DateTime
   - updatedAt: DateTime
-  - deletedAt: DateTime?
-  - manualOrder: int
+  - deletedAt: DateTime
   - sectionId: String
   + getId(): String
   + getTitle(): String
   + getContent(): String
   + getCreatedAt(): DateTime
   + getUpdatedAt(): DateTime
-  + getDeletedAt(): DateTime?
-  + getManualOrder(): int
-  + setManualOrder(order: int)
+  + getDeletedAt(): DateTime
   + getSectionId(): String
   + setSectionId(id: String)
   + updateTitle(t: String)
@@ -43,8 +40,7 @@ class NoteMemento <<memento>> {
   - content: String
   - createdAt: DateTime
   - updatedAt: DateTime
-  - deletedAt: DateTime?
-  - manualOrder: int
+  - deletedAt: DateTime
   - sectionId: String
 }
 
@@ -81,13 +77,10 @@ class Section {
   - id: String
   - name: String
   - createdAt: DateTime
-  - manualOrder: int
   + getId(): String
   + getName(): String
   + setName(name: String)
   + getCreatedAt(): DateTime
-  + getManualOrder(): int
-  + setManualOrder(order: int)
 }
 
 class SectionRepository {
@@ -98,6 +91,15 @@ class SectionRepository {
   + renameSection(id: String, newName: String)
   + deleteSection(id: String)
   + save(section: Section)
+}
+
+' ===========================
+' MOVE NOTE BETWEEN SECTIONS
+' ===========================
+class MoveNoteToSection {
+  - noteRepository: NoteRepository
+  - sectionRepository: SectionRepository
+  + move(noteId: String, targetSectionId: String)
 }
 
 ' ===========================
@@ -115,7 +117,6 @@ enum SortOrder {
   LastModified
   CreatedDate
   TitleAZ
-  Manual
 }
 
 ' ===========================
@@ -139,6 +140,7 @@ class AppController <<facade>> {
   - searchIndex: SearchIndex
   - sortPreference: SortPreference
   - sectionRepository: SectionRepository
+  - moveNoteToSectionService: MoveNoteToSection
   - activeSectionId: String
   + newNote(): Note
   + openNote(id: String): Note
@@ -157,8 +159,6 @@ class AppController <<facade>> {
   + setActiveSection(sectionId: String)
   + getActiveSection(): Section
   + moveNoteToSection(noteId: String, sectionId: String)
-  + setManualOrder(noteId: String, order: int)
-  + setSectionOrder(sectionId: String, order: int)
 }
 
 ' ===========================
@@ -183,7 +183,6 @@ class InMemoryLocalStorage <<adapter>> {
 ' ===========================
 ' LAYOUT HINTS (NOTE-CENTERED)
 ' ===========================
-' Keep core collaborators grouped so Note tends to be central
 together {
   class Note
   class NoteMemento
@@ -193,7 +192,6 @@ together {
   class SortPreference
 }
 
-' Directional hints around Note
 NoteRepository -down- Note
 Section -up- Note
 Trash -right- Note
@@ -218,6 +216,12 @@ AppController "1" --> "1" Trash : uses
 AppController "1" --> "1" SearchIndex : uses
 AppController "1" --> "1" SortPreference : uses
 AppController "1" --> "1" SectionRepository : uses
+AppController "1" --> "1" MoveNoteToSection : uses
+
+MoveNoteToSection "1" --> "1" NoteRepository : uses
+MoveNoteToSection "1" --> "1" SectionRepository : uses
+MoveNoteToSection ..> Note : updates sectionId
+MoveNoteToSection ..> Section : validates target
 
 SearchIndex ..> Note : indexes
 SortPreference ..> Note : sorts notes
