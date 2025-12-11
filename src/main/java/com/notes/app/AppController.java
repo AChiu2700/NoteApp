@@ -19,19 +19,34 @@ public class AppController {
     private final Trash trash;
     private final SearchIndex searchIndex;
     private final SortPreference sortPreference;
+    private final SectionRepository sectionRepository;
+    private final MoveNoteToSection moveNoteService;
 
-    public AppController(NoteRepository noteRepository,
-                         Trash trash,
-                         SearchIndex searchIndex,
-                         SortPreference sortPreference) {
+    private String activeSectionId;
+
+    public AppController(
+            NoteRepository noteRepository,
+            Trash trash,
+            SearchIndex searchIndex,
+            SortPreference sortPreference,
+            SectionRepository sectionRepository
+    ) {
         this.noteRepository = noteRepository;
         this.trash = trash;
         this.searchIndex = searchIndex;
         this.sortPreference = sortPreference;
+        this.sectionRepository = sectionRepository;
+        this.moveNoteService = new MoveNoteToSection(noteRepository, sectionRepository);
+        this.activeSectionId = null;
     }
 
     public Note newNote() {
-        return noteRepository.createNote("", "");
+        Note n = noteRepository.createNote("", "");
+        if (activeSectionId != null) {
+            n.setSectionId(activeSectionId);
+            noteRepository.save(n);
+        }
+        return n;
     }
 
     public Note openNote(String id) {
@@ -39,20 +54,17 @@ public class AppController {
     }
 
     public void editNote(String id, String title, String body) {
-        Note note = noteRepository.getNoteById(id);
-        if (note == null) {
-            return;
-        }
-        note.updateTitle(title);
-        note.updateContent(body);
-        noteRepository.save(note);
+        Note n = noteRepository.getNoteById(id);
+        if (n == null) return;
+        n.updateTitle(title);
+        n.updateContent(body);
+        noteRepository.save(n);
     }
 
     public void deleteNote(String id) {
-        Note note = noteRepository.getNoteById(id);
-        if (note == null) {
-            return;
-        }
+        Note n = noteRepository.getNoteById(id);
+        if (n == null) return;
+
         noteRepository.moveToTrash(id);
         if (n.getDeletedAt() != null) {
             trash.add(n);
@@ -60,23 +72,38 @@ public class AppController {
     }
 
     public void restoreNote(String id) {
-        Note note = noteRepository.getNoteById(id);
-        if (note == null) {
-            return;
-        }
-        NoteMemento snapshot = trash.getSnapshot(id);
+        Note n = noteRepository.getNoteById(id);
+        if (n == null) return;
+
+        NoteMemento snap = trash.getSnapshot(id);
         noteRepository.restoreFromTrash(id);
-        if (snapshot != null) {
-            note.restore(snapshot);
-            noteRepository.save(note);
+
+        if (snap != null) {
+            n.restore(snap);
         }
-        trash.remove(note);
+
+        noteRepository.save(n);
+        trash.remove(n);
+    }
+
+    public void restoreNoteToSection(String id, String targetSectionId) {
+        Note n = noteRepository.getNoteById(id);
+        if (n == null) return;
+
+        NoteMemento snap = trash.getSnapshot(id);
+        noteRepository.restoreFromTrash(id);
+
+        if (snap != null) {
+            n.restore(snap);
+        }
+
+        n.setSectionId(targetSectionId);
+        noteRepository.save(n);
+        trash.remove(n);
     }
 
     public void emptyTrash(List<String> ids) {
-        if (ids == null) {
-            return;
-        }
+        if (ids == null) return;
         for (String id : ids) {
             Note n = noteRepository.getNoteById(id);
             if (n != null) trash.remove(n);
@@ -99,22 +126,101 @@ public class AppController {
     }
 
     public List<Note> getDeletedNotes() {
-        List<Note> notes = noteRepository.listDeleted();
-        return sortPreference.apply(notes);
+        return sortPreference.apply(noteRepository.listDeleted());
     }
 
-    public List<Note> search(String query) {
-        // If query is empty → just return the normal sorted list
-        if (query == null || query.isBlank()) {
+    public List<Note> search(String q) {
+        if (q == null || q.isBlank()) {
             return getListOfNotes();
         }
+        List<Note> notes = getListOfNotes();
+        searchIndex.index(notes);
+        return sortPreference.apply(searchIndex.search(q));
+    }
 
-        // Index current notes
-        List<Note> allNotes = noteRepository.listNotes();
-        searchIndex.index(allNotes);
+    public List<Section> listSections() {
+        return sectionRepository.listSections();
+    }
 
-        // Do the search and apply sorting
-        List<Note> results = searchIndex.search(query);
-        return sortPreference.apply(results);
+    public Section createSection(String name) {
+        Section s = sectionRepository.createSection(name);
+        if (activeSectionId == null) {
+            activeSectionId = s.getId();
+        }
+        return s;
+    }
+
+    public void renameSection(String id, String newName) {
+        sectionRepository.renameSection(id, newName);
+    }
+
+    // UPDATED: When deleting a section, delete its notes too
+    public void deleteSection(String id) {
+        if (id == null) return;
+
+        List<Note> notes = noteRepository.listBySection(id);
+        for (Note n : notes) {
+            if (n.getDeletedAt() == null) {
+                noteRepository.moveToTrash(n.getId());
+                if (n.getDeletedAt() != null) {
+                    trash.add(n);
+                }
+            }
+        }
+
+        sectionRepository.deleteSection(id);
+
+        if (id.equals(activeSectionId)) {
+            activeSectionId = null;
+        }
+    }
+
+    public List<Section> listDeletedSections() {
+        return sectionRepository.listDeletedSections();
+    }
+
+    // UPDATED: When restoring a section, restore its notes too
+    public void restoreSection(String id) {
+        if (id == null) return;
+
+        sectionRepository.restoreSection(id);
+
+        List<Note> deleted = noteRepository.listDeleted();
+        for (Note n : deleted) {
+            if (id.equals(n.getSectionId())) {
+                restoreNote(n.getId());
+            }
+        }
+
+        if (activeSectionId == null) {
+            activeSectionId = id;
+        }
+    }
+
+    public void purgeSection(String id) {
+        sectionRepository.purgeSection(id);
+    }
+
+    public void setActiveSection(String sectionId) {
+        this.activeSectionId = sectionId;
+    }
+
+    public Section getActiveSection() {
+        if (activeSectionId == null) return null;
+        return sectionRepository.getSection(activeSectionId);
+    }
+
+    public Section findSectionById(String id) {
+        if (id == null) return null;
+        return sectionRepository.getSection(id);
+    }
+
+    public void moveNoteToSection(String noteId, String sectionId) {
+        moveNoteService.move(noteId, sectionId);
+    }
+
+    public List<Note> getNotesForSection(String sectionId) {
+        List<Note> notes = noteRepository.listBySection(sectionId);
+        return sortPreference.apply(notes);
     }
 }

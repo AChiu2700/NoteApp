@@ -40,7 +40,6 @@ class SearchAndSort {
         Trash trash = new Trash(30, clock);
         var sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.LastModified);
-        SectionRepository sectionRepo = new SectionRepository(storage, clock);
 
         AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
@@ -80,7 +79,6 @@ class SearchAndSort {
         Trash trash = new Trash(30, clock);
         var sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.LastModified);
-        SectionRepository sectionRepo = new SectionRepository(storage, clock);
 
         AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
@@ -127,7 +125,6 @@ class SearchAndSort {
         Trash trash = new Trash(30, clock);
         var sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.CreatedDate);
-        SectionRepository sectionRepo = new SectionRepository(storage, clock);
 
         AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
