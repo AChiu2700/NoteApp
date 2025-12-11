@@ -28,7 +28,7 @@ public class InMemoryLocalStorage implements LocalStorage {
     }
 
     @SuppressWarnings("unchecked")
-    private void loadFromDisk() {
+    private synchronized void loadFromDisk() {
         if (!Files.exists(filePath)) {
             return;
         }
@@ -39,7 +39,16 @@ public class InMemoryLocalStorage implements LocalStorage {
                 storage.putAll((Map<String, Object>) map);
             }
         } catch (IOException | ClassNotFoundException e) {
+            // If something is corrupted, clear AND delete the bad file
             storage.clear();
+            try {
+                Files.deleteIfExists(filePath);
+            } catch (IOException ignore) {
+                // best-effort only
+            }
+            // Log so we see what went wrong
+            System.err.println("[LocalStorage] Failed to load from " + filePath + ": " + e);
+            e.printStackTrace();
         }
     }
 
@@ -52,7 +61,9 @@ public class InMemoryLocalStorage implements LocalStorage {
                 oos.writeObject(storage);
             }
         } catch (IOException e) {
-            // ignore persistence errors for this simple app
+            // IMPORTANT: log this so we see NotSerializableException etc.
+            System.err.println("[LocalStorage] Failed to save to " + filePath + ": " + e);
+            e.printStackTrace();
         }
     }
 
@@ -60,7 +71,7 @@ public class InMemoryLocalStorage implements LocalStorage {
     public synchronized Object read(String key) {
         return storage.get(key);
     }
-    
+
     @Override
     public synchronized void write(String key, Object value) {
         storage.put(key, value);

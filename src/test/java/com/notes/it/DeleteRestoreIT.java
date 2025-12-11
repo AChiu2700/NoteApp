@@ -1,9 +1,11 @@
 package com.notes.it;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.notes.app.AppController;
@@ -20,15 +22,22 @@ import com.notes.util.Clock;
 
 class DeleteRestoreIT {
 
+    private SearchIndex index;
+
+    @BeforeEach
+    void resetIndex() {
+        index = SearchIndex.getInstance();
+        index.index(new ArrayList<>());
+    }
+
     private AppController newController() {
         LocalStorage storage = new InMemoryLocalStorage();
         Clock clock = () -> Instant.parse("2025-01-01T00:00:00Z");
         NoteRepository repo = new NoteRepository(storage, clock);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
         Trash trash = new Trash(30, clock);
-        SearchIndex index = SearchIndex.getInstance();
         SortPreference sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.LastModified);
-        SectionRepository sectionRepo = new SectionRepository(storage, clock);
         return new AppController(repo, trash, index, sortPref, sectionRepo);
     }
 
@@ -47,7 +56,6 @@ class DeleteRestoreIT {
         ctrl.deleteNote(note.getId());
 
         int afterDelete = ctrl.getListOfNotes().size();
-        // After delete, active list should be back to original size
         assertEquals(initialSize, afterDelete);
     }
 
@@ -74,7 +82,6 @@ class DeleteRestoreIT {
         int afterRestoreSize = notesAfterRestore.size();
         assertEquals(initialSize + 1, afterRestoreSize);
 
-        // Find the restored note by id (since there may be many notes)
         Note restored = notesAfterRestore.stream()
                 .filter(n -> n.getId().equals(note.getId()))
                 .findFirst()

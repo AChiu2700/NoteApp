@@ -1,6 +1,7 @@
 package com.notes.app;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,16 +24,18 @@ class AppControllerTest {
 
     private AppController controller;
     private NoteRepository repo;
+    private SearchIndex index;
 
     @BeforeEach
     void setUp() {
         LocalStorage storage = new InMemoryLocalStorage();
         Clock clock = () -> Instant.parse("2025-01-01T00:00:00Z");
         repo = new NoteRepository(storage, clock);
-        Trash trash = new Trash(30, clock);
-        SearchIndex index = SearchIndex.getInstance();
-        SortPreference sortPref = new SortPreference();
         SectionRepository sectionRepo = new SectionRepository(storage, clock);
+        Trash trash = new Trash(30, clock);
+        index = SearchIndex.getInstance();
+        index.index(new ArrayList<>());
+        SortPreference sortPref = new SortPreference();
         controller = new AppController(repo, trash, index, sortPref, sectionRepo);
     }
 
