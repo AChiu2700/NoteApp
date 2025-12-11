@@ -1,9 +1,8 @@
-Feature 1 (Viet Nguyen) – Sections (Organizing Notes by Category)
-New Classes: Section, SectionRepository
-New Relationships:
-- SectionRepository ↔ LocalStorage
-- AppController → SectionRepository (integration w/ facade)
+Feature 2 (Arpit Jaysukhbhai Vora) – Move notes between sections & Delete Sections & Sort Sections
+-	New Classes: MoveNoteToSection
 
-New AppController Methods: 
-- listSections, createSection, renameSection, deleteSection, setActiveSection, getActiveSection, moveNoteToSection
-- Note Update: Added sectionId field to link each note to its assigned section.
+New Relationships:
+-	MoveNoteToSection → NoteRepository
+-	MoveNoteToSection → SectionRepository
+-	AppController → MoveNoteToSection (integration w/ facade)
+Logic update: AppController.moveNoteToSection(noteId, targetSectionId) delegates to MoveNoteToSection, which validates the target section, updates the note’s sectionId, and persists the change so the note appears under the new section.
