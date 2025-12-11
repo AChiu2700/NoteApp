@@ -1,0 +1,184 @@
+@startuml
+title Class Diagram: AppController-Centered View
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam shadowing false
+
+' ===========================
+' CORE DOMAIN
+' ===========================
+class Note {
+  - id: String
+  - title: String
+  - content: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  - deletedAt: DateTime?
+  - sectionId: String
+}
+
+class Section {
+  - id: String
+  - name: String
+  - createdAt: DateTime
+}
+
+class NoteMemento {
+  - id: String
+  - title: String
+  - content: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  - deletedAt: DateTime?
+  - sectionId: String
+}
+
+' ===========================
+' REPOSITORIES + SERVICES
+' ===========================
+class NoteRepository {
+  - storage: LocalStorage
+  + createNote(title: String, body: String): Note
+  + getNoteById(id: String): Note
+  + listNotes(): List<Note>
+  + listDeleted(): List<Note>
+  + listBySection(sectionId: String): List<Note>
+  + save(note: Note)
+  + moveToTrash(noteId: String)
+  + restoreFromTrash(noteId: String)
+  + purgeDeletedNotes(noteId: String)
+}
+
+class SectionRepository {
+  - storage: LocalStorage
+  + createSection(name: String): Section
+  + getSection(id: String): Section
+  + listSections(): List<Section>
+  + listDeletedSections(): List<Section>
+  + renameSection(id: String, newName: String)
+  + deleteSection(id: String)
+  + restoreSection(id: String)
+  + purgeSection(id: String)
+}
+
+class Trash {
+  + add(note: Note)
+  + remove(note: Note)
+  + listDeleted(): List<Note>
+  + getSnapshot(noteId: String): NoteMemento
+  + purgeExpired()
+}
+
+class MoveNoteToSection {
+  + move(noteId: String, targetSectionId: String)
+}
+
+class SortPreference {
+  - sortOrder: SortOrder
+  + getSortOrder(): SortOrder
+  + setSortOrder(order: SortOrder)
+  + apply(notes: List<Note>): List<Note>
+}
+
+enum SortOrder {
+  LastModified
+  CreatedDate
+  TitleAZ
+}
+
+class SearchIndex {
+  + index(notes: List<Note>)
+  + search(query: String): List<Note>
+}
+
+' ===========================
+' STORAGE (ADAPTER)
+' ===========================
+interface LocalStorage {
+  + read(key: String): Any
+  + write(key: String, value: Any)
+  + delete(key: String)
+}
+
+class InMemoryLocalStorage {
+  - storage: Map<String, Any>
+  + read(key: String): Any
+  + write(key: String, value: Any)
+  + delete(key: String)
+}
+
+' ===========================
+' APP FACADE (CENTER)
+' ===========================
+class AppController <<facade>> {
+  - noteRepository: NoteRepository
+  - trash: Trash
+  - searchIndex: SearchIndex
+  - sortPreference: SortPreference
+  - sectionRepository: SectionRepository
+  - moveNoteService: MoveNoteToSection
+  - activeSectionId: String
+
+  + AppController(noteRepository: NoteRepository,
+                  trash: Trash,
+                  searchIndex: SearchIndex,
+                  sortPreference: SortPreference,
+                  sectionRepository: SectionRepository)
+
+  + newNote(): Note
+  + openNote(id: String): Note
+  + editNote(id: String, title: String, body: String)
+  + deleteNote(id: String)
+  + restoreNote(id: String)
+  + restoreNoteToSection(id: String, targetSectionId: String)
+  + emptyTrash(ids: List<String>)
+  + setSortOrder(order: SortOrder)
+  + getListOfNotes(): List<Note>
+  + getDeletedNotes(): List<Note>
+  + search(q: String): List<Note>
+  + listSections(): List<Section>
+  + createSection(name: String): Section
+  + renameSection(id: String, name: String)
+  + deleteSection(id: String)
+  + listDeletedSections(): List<Section>
+  + restoreSection(id: String)
+  + purgeSection(id: String)
+  + setActiveSection(sectionId: String)
+  + getActiveSection(): Section
+  + findSectionById(id: String): Section
+  + moveNoteToSection(noteId: String, sectionId: String)
+  + getNotesForSection(sectionId: String): List<Note>
+}
+
+' ===========================
+' RELATIONSHIPS
+' ===========================
+AppController "1" --> "1" NoteRepository : uses
+AppController "1" --> "1" Trash : uses
+AppController "1" --> "1" SearchIndex : uses
+AppController "1" --> "1" SortPreference : uses
+AppController "1" --> "1" SectionRepository : uses
+AppController "1" --> "1" MoveNoteToSection : uses
+
+NoteRepository "1" *-- "0..*" Note
+NoteRepository "1" --> "1" LocalStorage
+NoteRepository ..> NoteMemento
+
+SectionRepository "1" *-- "0..*" Section
+SectionRepository "1" --> "1" LocalStorage
+
+Trash "1" o-- "0..*" Note
+Trash ..> NoteMemento
+
+MoveNoteToSection ..> Note
+MoveNoteToSection ..> Section
+
+SearchIndex ..> Note
+SortPreference ..> Note
+SortPreference "1" --> "1" SortOrder
+
+InMemoryLocalStorage ..|> LocalStorage
+
+@enduml
