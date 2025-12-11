@@ -19,7 +19,7 @@ class SearchIndexTest {
 
     @Test
     void index_buildsSearchTokens_forTitleAndBody() {
-        var idx = new SearchIndex();
+        var idx = SearchIndex.getInstance();
         var notes = List.of(n("1","Alpha","bravo data"), n("2","Misc","nope"));
         idx.index(notes);
         assertEquals(1, idx.search("Alpha").size());
@@ -28,28 +28,28 @@ class SearchIndexTest {
 
     @Test
     void search_emptyQuery_returnsAllNotes() {
-        var idx = new SearchIndex();
+        var idx = SearchIndex.getInstance();
         idx.index(List.of(n("1","A",""), n("2","B","")));
         assertEquals(2, idx.search("").size());
     }
 
     @Test
     void search_singleKeyword_returnsMatches() {
-        var idx = new SearchIndex();
+        var idx = SearchIndex.getInstance();
         idx.index(List.of(n("1","Alpha","x"), n("2","Beta","alpha body")));
         assertEquals(2, idx.search("alpha").size());
     }
 
     @Test
     void search_caseInsensitive_matches() {
-        var idx = new SearchIndex();
+        var idx = SearchIndex.getInstance();
         idx.index(List.of(n("1","Project Plan",""), n("2","misc","PROJECT details")));
         assertEquals(2, idx.search("pRoJeCt").size());
     }
 
     @Test
     void search_noMatches_returnsEmptyList() {
-        var idx = new SearchIndex();
+        var idx = SearchIndex.getInstance();
         idx.index(List.of(n("1","A",""), n("2","B","")));
         assertTrue(idx.search("zzz").isEmpty());
     }

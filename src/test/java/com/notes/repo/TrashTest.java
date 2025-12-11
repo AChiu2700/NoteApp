@@ -26,29 +26,30 @@ class TrashTest {
     void add_onlyStoresNotesThatAreMarkedDeleted() {
         Note n1 = new Note("T1", "C1", clock.now());
         Note n2 = new Note("T2", "C2", clock.now());
-        n2.markDelete(clock.now());
+        n2.markDeleted(clock.now());
 
         trash.add(n1);
-        assertTrue(trash.listDeletedNotes().isEmpty());
+        assertTrue(trash.listDeleted().isEmpty());
 
         trash.add(n2);
-        assertEquals(1, trash.listDeletedNotes().size());
-        assertEquals("T2", trash.listDeletedNotes().get(0).getTitle());
+        assertEquals(1, trash.listDeleted().size());
+        assertEquals("T2", trash.listDeleted().get(0).getTitle());
     }
 
     @Test
     void purgeExpired_removesNotesBeyondRetentionDays() {
         Note old = new Note("Old", "C", clock.now().minus(40, ChronoUnit.DAYS));
-        old.markDelete(old.getCreatedAt());
+        old.markDeleted(old.getCreatedAt());
         trash.add(old);
 
         Note recent = new Note("New", "C", clock.now().minus(5, ChronoUnit.DAYS));
-        recent.markDelete(recent.getCreatedAt());
+        recent.markDeleted(recent.getCreatedAt());
         trash.add(recent);
 
-        trash.purgeExpired(clock.now());
+        // uses internal clock in Trash
+        trash.purgeExpired();
 
-        var remaining = trash.listDeletedNotes();
+        var remaining = trash.listDeleted();
         assertEquals(1, remaining.size());
         assertEquals("New", remaining.get(0).getTitle());
     }

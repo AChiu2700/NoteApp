@@ -1,0 +1,149 @@
+@startuml
+title Class Diagram: Note App with Design Patterns
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam nodesep 100
+skinparam ranksep 100
+skinparam shadowing false
+
+' ===========================
+' MAIN DOMAIN
+' ===========================
+class Note <<originator>> {
+  - id: String
+  - title: String
+  - body: String
+  - createdAt: DateTime
+  - modifiedAt: DateTime
+  - deletedAt: DateTime?
+  + updateTitle(t: String)
+  + updateBody(b: String)
+  + markDeleted(now: DateTime)
+  + clearDeleted()
+  + createMemento(): NoteMemento
+  + restore(m: NoteMemento)
+}
+
+class NoteMemento <<memento>> {
+  - id: String
+  - title: String
+  - body: String
+  - createdAt: DateTime
+  - modifiedAt: DateTime
+  - deletedAt: DateTime?
+}
+
+class NoteRepository {
+  - storage: LocalStorage
+  + createNote(title: String, body: String): Note
+  + getNote(id: String): Note
+  + listNotes(): List<Note>
+  + listDeleted(): List<Note>
+  + save(note: Note): Note
+  + moveToTrash(noteId: String)
+  + restoreFromTrash(noteId: String)
+  + purgeDeletedNotes(noteId: String)
+}
+
+class Trash <<caretaker>> {
+  - retentionDays: int = 30
+  - deletedSnapshots: List<NoteMemento>
+  + add(note: Note)
+  + remove(note: Note): boolean
+  + listDeletedNotes(): List<NoteMemento>
+  + autoPurge()
+  + purgeExpired(now: DateTime)
+  + getRetentionDays(): int
+}
+
+' ===========================
+' SORTING STRATEGY
+' ===========================
+class SortPreference <<strategy-context>> {
+  - order: SortOrder
+  + getSortOrder(): SortOrder
+  + setSortOrder(o: SortOrder)
+  + apply(notes: List<Note>): List<Note>
+}
+
+enum SortOrder {
+  LastModified
+  CreatedDate
+  TitleAZ
+}
+
+' ===========================
+' SEARCH (SINGLETON)
+' ===========================
+class SearchIndex <<singleton>> {
+  - snapshot: List<Note>
+  - instance: SearchIndex
+  - SearchIndex()
+  + getInstance(): SearchIndex
+  + index(notes: List<Note>)
+  + search(query: String): List<Note>
+}
+
+' ===========================
+' APP FACADE
+' ===========================
+class AppController <<facade>> {
+  - repo: NoteRepository
+  - index: SearchIndex
+  - sortPref: SortPreference
+  - trash: Trash
+  + newNote(): Note
+  + openNote(id: String): Note
+  + editNote(id: String, t: String, b: String): Note
+  + deleteNote(id: String)
+  + restoreNote(id: String)
+  + emptyTrash(ids: List<String>)
+  + search(q: String): List<Note>
+  + setSort(order: SortOrder)
+  + getList(): List<Note>
+  + getDeletedNotes(): List<NoteMemento>
+}
+
+' ===========================
+' STORAGE (ADAPTER)
+' ===========================
+interface LocalStorage {
+  + read(key: String): Any
+  + write(key: String, value: Any)
+  + delete(key: String)
+}
+
+class InMemoryLocalStorage <<adapter>> {
+  - storage: Map<String, Any>
+  - filePath: Path
+  + InMemoryLocalStorage()
+  + InMemoryLocalStorage(filename: String)
+  + read(key: String): Any
+  + write(key: String, value: Any)
+  + delete(key: String)
+}
+
+' ===========================
+' RELATIONSHIPS
+' ===========================
+NoteRepository "1" *-- "0..*" Note : manages
+
+NoteRepository "1" --> "1" LocalStorage : uses
+InMemoryLocalStorage ..|> LocalStorage
+
+Trash "1" o-- "0..*" NoteMemento : stores snapshots
+Trash ..> Note : restores
+
+AppController "1" --> "1" NoteRepository : uses
+AppController "1" --> "1" SearchIndex   : uses singleton
+AppController "1" --> "1" SortPreference: uses
+AppController "1" --> "1" Trash         : uses
+
+SearchIndex ..> Note : indexes
+SortPreference ..> Note : sorts list
+
+SortPreference "1" --> "1" SortOrder
+
+Note "1" --> "0..*" NoteMemento : creates mementos
+
+@enduml

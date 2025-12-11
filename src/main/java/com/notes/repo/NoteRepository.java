@@ -1,6 +1,5 @@
 package com.notes.repo;
 
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,28 +9,35 @@ import com.notes.model.Note;
 import com.notes.storage.LocalStorage;
 import com.notes.util.Clock;
 
-public class NoteRepository{
+public class NoteRepository {
     private static final String KEY = "notes";
+
     private final LocalStorage storage;
     private final Clock clock;
 
+    public NoteRepository(LocalStorage storage, Clock clock) {
+        this.storage = storage;
+        this.clock = clock;
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Note> load() {
-        Object v = storage.read(KEY);
-        return (v instanceof Map) ? (Map<String, Note>) v : new HashMap<>();
+        Object raw = storage.read(KEY);
+        if (raw instanceof Map<?, ?> map) {
+            try {
+                return (Map<String, Note>) map;
+            } catch (ClassCastException ex) {
+                return new HashMap<>();
+            }
+        }
+        return new HashMap<>();
     }
 
     private void saveAll(Map<String, Note> notes) {
         storage.write(KEY, notes);
     }
 
-    public NoteRepository(LocalStorage storage, Clock clock){
-        this.storage = storage;
-        this.clock = clock;
-        saveAll (load()) ;
-    }
-
-    public Note createNote(String title, String content){
+    public Note createNote(String title, String content) {
         Map<String, Note> notes = load();
         Note note = new Note(title, content, clock.now());
         notes.put(note.getId(), note);
@@ -39,66 +45,67 @@ public class NoteRepository{
         return note;
     }
 
-    public Note getNoteById(String id){
+    public Note getNoteById(String id) {
+        if (id == null) return null;
         Map<String, Note> notes = load();
         return notes.get(id);
     }
 
     public List<Note> listNotes() {
-        return load().values().stream()
-                .filter(n -> n.getDeletedAt() == null)
-                .sorted(Comparator.comparing(Note::getUpdatedAt).reversed())
-                .collect(Collectors.toList());  
-    }
-
-    public List<Note> listDeleted() {
-        return load().values().stream()
-                .filter(n -> n.getDeletedAt() != null)
+        Map<String, Note> notes = load();
+        return notes.values().stream()
+                .filter(n -> !n.isDeleted())
                 .collect(Collectors.toList());
     }
 
-    public Note save(Note note){
+    public List<Note> listDeleted() {
         Map<String, Note> notes = load();
-        Note current = notes.get(note.getId());
-        if (current != null) {
-            current = new Note(
-                    current.getId(),
-                    note.getTitle(),
-                    note.getContent(),
-                    current.getCreatedAt(),
-                    clock.now(),
-                    current.getDeletedAt()
-            );
-            notes.put(current.getId(), current);
-            saveAll(notes);
-            return current;
-        }
-        notes.put(note.getId(), note);
-        saveAll(notes);
-        return note;
+        return notes.values().stream()
+                .filter(Note::isDeleted)
+                .collect(Collectors.toList());
     }
 
-    public void moveToTrash(String noteID){
-        Map<String,Note> notes = load();
-        Note note = notes.get(noteID);
-        if (note == null) {return;}
-        note.markDelete(clock.now());
+    public List<Note> listBySection(String sectionId) {
+        Map<String, Note> notes = load();
+        return notes.values().stream()
+                .filter(n -> !n.isDeleted())
+                .filter(n -> {
+                    if (sectionId == null) {
+                        return n.getSectionId() == null;
+                    }
+                    return sectionId.equals(n.getSectionId());
+                })
+                .collect(Collectors.toList());
+    }
+
+    public void save(Note note) {
+        if (note == null) return;
+        Map<String, Note> notes = load();
         notes.put(note.getId(), note);
         saveAll(notes);
     }
 
-    public void restoreFromTrash(String noteID){
-        Map<String,Note> notes = load();
-        Note note = notes.get(noteID);
-        if (note == null) {return;}
+    public void moveToTrash(String noteId) {
+        Map<String, Note> notes = load();
+        Note note = notes.get(noteId);
+        if (note == null) return;
+        note.markDeleted(clock.now());
+        notes.put(note.getId(), note);
+        saveAll(notes);
+    }
+
+    public void restoreFromTrash(String noteId) {
+        Map<String, Note> notes = load();
+        Note note = notes.get(noteId);
+        if (note == null) return;
         note.clearDelete();
         notes.put(note.getId(), note);
         saveAll(notes);
     }
 
-    public void purgeDeletedNotes(String noteID){
-        Map<String,Note> notes = load();
-        notes.remove(noteID);
+    public void purgeDeletedNotes(String noteId) {
+        Map<String, Note> notes = load();
+        notes.remove(noteId);
         saveAll(notes);
     }
 }

@@ -63,7 +63,7 @@ class NoteTest {
         var n = new Note("T", "C", ISO("2025-01-01T00:00:00Z"));
         assertNull(n.getDeletedAt());
         var now = ISO("2025-01-02T00:00:00Z");
-        n.markDelete(now);
+        n.markDeleted(now);
         assertEquals(now, n.getDeletedAt());
     }
 
@@ -71,10 +71,10 @@ class NoteTest {
     void markDeleted_whenAlreadyDeleted_overwritesDeletedAt() {
         var n = new Note("T", "C", ISO("2025-01-01T00:00:00Z"));
         var first = ISO("2025-01-02T00:00:00Z");
-        n.markDelete(first);
+        n.markDeleted(first);
 
         var second = ISO("2025-01-03T00:00:00Z");
-        n.markDelete(second);
+        n.markDeleted(second);
 
         assertEquals(second, n.getDeletedAt());
     }
@@ -82,7 +82,7 @@ class NoteTest {
     @Test
     void clearDeleted_whenDeleted_unsetsDeletedAt() {
         var n = new Note("T", "C", ISO("2025-01-01T00:00:00Z"));
-        n.markDelete(ISO("2025-01-02T00:00:00Z"));
+        n.markDeleted(ISO("2025-01-02T00:00:00Z"));
         n.clearDelete();
         assertNull(n.getDeletedAt());
     }

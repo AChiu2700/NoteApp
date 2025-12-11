@@ -14,37 +14,55 @@ public class InMemoryLocalStorage implements LocalStorage {
     private final Map<String, Object> storage = new ConcurrentHashMap<>();
     private final Path filePath;
 
-
     public InMemoryLocalStorage() {
-        this("notes-storage.ser");
+        this(Path.of("notes.dat"));
     }
 
-    public InMemoryLocalStorage(String filename) {
-        this.filePath = Path.of(filename);
+    public InMemoryLocalStorage(Path filePath) {
+        this.filePath = filePath;
         loadFromDisk();
     }
 
-    @SuppressWarnings("unchecked")
-    private void loadFromDisk() {
-        if (!Files.exists(filePath)) {
-            return; // no existing file → start empty
-        }
+    public InMemoryLocalStorage(String filename) {
+        this(Path.of(filename));
+    }
 
+    @SuppressWarnings("unchecked")
+    private synchronized void loadFromDisk() {
+        if (!Files.exists(filePath)) {
+            return;
+        }
         try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(filePath))) {
-            Object obj = ois.readObject();
-            if (obj instanceof Map<?, ?> map) {
+            Object raw = ois.readObject();
+            if (raw instanceof Map<?, ?> map) {
                 storage.clear();
                 storage.putAll((Map<String, Object>) map);
             }
         } catch (IOException | ClassNotFoundException e) {
+            // If something is corrupted, clear AND delete the bad file
+            storage.clear();
+            try {
+                Files.deleteIfExists(filePath);
+            } catch (IOException ignore) {
+                // best-effort only
+            }
+            // Log so we see what went wrong
+            System.err.println("[LocalStorage] Failed to load from " + filePath + ": " + e);
             e.printStackTrace();
         }
     }
 
-    private void saveToDisk() {
-        try (ObjectOutputStream oos = new ObjectOutputStream(Files.newOutputStream(filePath))) {
-            oos.writeObject(storage);
+    private synchronized void saveToDisk() {
+        try {
+            if (filePath.getParent() != null) {
+                Files.createDirectories(filePath.getParent());
+            }
+            try (ObjectOutputStream oos = new ObjectOutputStream(Files.newOutputStream(filePath))) {
+                oos.writeObject(storage);
+            }
         } catch (IOException e) {
+            // IMPORTANT: log this so we see NotSerializableException etc.
+            System.err.println("[LocalStorage] Failed to save to " + filePath + ": " + e);
             e.printStackTrace();
         }
     }
