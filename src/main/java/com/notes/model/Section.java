@@ -5,20 +5,23 @@ import java.time.Instant;
 import java.util.UUID;
 
 public class Section implements Serializable {
+
     private static final long serialVersionUID = 1L;
 
     private final String id;
     private String name;
     private final Instant createdAt;
+    private Instant deletedAt;
 
     public Section(String name, Instant createdAt) {
-        this(UUID.randomUUID().toString(), name, createdAt);
+        this(UUID.randomUUID().toString(), name, createdAt, null);
     }
 
-    public Section(String id, String name, Instant createdAt) {
+    public Section(String id, String name, Instant createdAt, Instant deletedAt) {
         this.id = id;
-        this.name = name;
+        this.name = (name == null) ? "" : name;
         this.createdAt = createdAt;
+        this.deletedAt = deletedAt;
     }
 
     public String getId() {
@@ -30,15 +33,34 @@ public class Section implements Serializable {
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.name = (name == null) ? "" : name;
     }
 
     public Instant getCreatedAt() {
         return createdAt;
     }
 
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public void markDeleted(Instant now) {
+        this.deletedAt = now;
+    }
+
+    public void clearDeleted() {
+        this.deletedAt = null;
+    }
+
     @Override
     public String toString() {
-        return name == null || name.isBlank() ? "(Untitled Section)" : name;
+        if (name == null || name.isBlank()) {
+            return "(Untitled Section)";
+        }
+        return name;
     }
 }

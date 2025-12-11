@@ -1,9 +1,11 @@
 package com.notes.it;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.notes.app.AppController;
@@ -20,16 +22,23 @@ import com.notes.util.Clock;
 
 class CreateAndAutoSaveIT {
 
+    private SearchIndex index;
+
+    @BeforeEach
+    void resetIndex() {
+        index = SearchIndex.getInstance();
+        index.index(new ArrayList<>());
+    }
+
     @Test
     void create_edit_then_list_showsUpdatedNote() {
         LocalStorage storage = new InMemoryLocalStorage();
         Clock clock = () -> Instant.parse("2025-01-01T00:00:00Z");
         NoteRepository repo = new NoteRepository(storage, clock);
-        Trash trash = new Trash(30, clock);
-        SearchIndex index = SearchIndex.getInstance();
-        var sortPref = new SortPreference();
-        sortPref.setSortOrder(SortOrder.LastModified);
         SectionRepository sectionRepo = new SectionRepository(storage, clock);
+        Trash trash = new Trash(30, clock);
+        SortPreference sortPref = new SortPreference();
+        sortPref.setSortOrder(SortOrder.LastModified);
 
         AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
