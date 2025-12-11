@@ -5,8 +5,10 @@ C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\storage\LocalSto
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\repo\Trash.java
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\sort\SortOrder.java
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\storage\InMemoryLocalStorage.java
+C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\ui\MoveNotesDialog.java
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\ui\NotesApp.java
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\model\Note.java
+C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\app\MoveNoteToSection.java
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\ui\NotesView.java
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\repo\NoteRepository.java
 C:\Users\achiu\Documents\GitHub\NoteApp\src\main\java\com\notes\repo\SectionRepository.java

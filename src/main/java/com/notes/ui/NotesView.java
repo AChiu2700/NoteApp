@@ -1,5 +1,6 @@
 package com.notes.ui;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -10,6 +11,7 @@ import com.notes.sort.SortOrder;
 
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -22,6 +24,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 public class NotesView {
 
@@ -29,13 +33,22 @@ public class NotesView {
 
     private final BorderPane root;
 
-    // Sections UI (tabs)
+    // Sections UI (normal mode)
     private final TabPane sectionTabs;
     private final TextField newSectionField;
     private final Button addSectionButton;
     private final Button sortSectionsButton;
+    private final Button deleteSectionButton;
     private final Label sectionsLabel;
-    private boolean sectionSortAscending = true;
+    private final HBox sectionHeaderRow;
+    private final HBox addSectionRow;
+
+    // Deleted sections UI (trash mode)
+    private final Label deletedSectionsLabel;
+    private final ListView<Section> deletedSectionsList;
+    private final Button restoreSectionButton;
+    private final Button purgeSectionButton;
+    private final HBox deletedSectionButtonsRow;
 
     // Notes UI
     private final ListView<Note> notesListView;
@@ -50,10 +63,13 @@ public class NotesView {
     private final Button trashButton;
     private final Button newButton;
     private final Button saveButton;
+    private final Button moveNotesButton;
     private final Button deleteButton;
     private final Button restoreButton;
     private final Label modeLabel;
     private final Label sortLabel;
+
+    private boolean sectionSortAscending = true;
 
     private Note currentNote;
     private boolean showingTrash = false;
@@ -62,14 +78,32 @@ public class NotesView {
     public NotesView(AppController controller) {
         this.controller = controller;
 
+        // Sections (normal mode)
         sectionTabs = new TabPane();
         sectionTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
+        sectionsLabel = new Label("Sections");
         newSectionField = new TextField();
         newSectionField.setPromptText("New section name");
         addSectionButton = new Button("Add");
         sortSectionsButton = new Button("Sort A-Z");
+        deleteSectionButton = new Button("Delete Section");
 
+        sectionHeaderRow = new HBox(6, sectionsLabel, sortSectionsButton, deleteSectionButton);
+        sectionHeaderRow.setPadding(new Insets(4, 0, 0, 0));
+
+        addSectionRow = new HBox(6, newSectionField, addSectionButton);
+        addSectionRow.setPadding(new Insets(4, 0, 4, 0));
+        HBox.setHgrow(newSectionField, Priority.ALWAYS);
+
+        // Deleted sections (trash mode)
+        deletedSectionsLabel = new Label("Deleted Sections");
+        deletedSectionsList = new ListView<>();
+        restoreSectionButton = new Button("Restore Section");
+        purgeSectionButton = new Button("Delete Section Permanently");
+        deletedSectionButtonsRow = new HBox(6, restoreSectionButton, purgeSectionButton);
+
+        // Notes
         notesListView = new ListView<>();
         notesListView.setPrefWidth(220);
 
@@ -89,6 +123,7 @@ public class NotesView {
 
         newButton = new Button("New");
         saveButton = new Button("Save");
+        moveNotesButton = new Button("Move Notes...");
         deleteButton = new Button("Delete");
         restoreButton = new Button("Restore");
         trashButton = new Button("Trash");
@@ -96,7 +131,6 @@ public class NotesView {
         modeLabel = new Label("Notes");
         sortLabel = new Label("Sort:");
 
-        sectionsLabel = new Label("Sections");
         notesLabel = new Label("Notes");
 
         root = buildLayout();
@@ -111,7 +145,6 @@ public class NotesView {
     }
 
     private BorderPane buildLayout() {
-        // Top bar
         HBox topBar = new HBox(
                 8,
                 modeLabel,
@@ -124,31 +157,28 @@ public class NotesView {
         topBar.setPadding(new Insets(8));
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
-        // Sections row
-        HBox addSectionRow = new HBox(6, newSectionField, addSectionButton, sortSectionsButton);
-        addSectionRow.setPadding(new Insets(4, 0, 4, 0));
-        HBox.setHgrow(newSectionField, Priority.ALWAYS);
-
         VBox leftBox = new VBox(
                 6,
-                sectionsLabel,
+                sectionHeaderRow,
                 addSectionRow,
                 sectionTabs,
+                deletedSectionsLabel,
+                deletedSectionsList,
+                deletedSectionButtonsRow,
                 notesLabel,
                 notesListView
         );
         leftBox.setPadding(new Insets(8));
-        leftBox.setPrefWidth(280);
+        leftBox.setPrefWidth(320);
         VBox.setVgrow(sectionTabs, Priority.NEVER);
+        VBox.setVgrow(deletedSectionsList, Priority.NEVER);
         VBox.setVgrow(notesListView, Priority.ALWAYS);
 
-        // Center editor
         VBox editorBox = new VBox(8, titleField, bodyArea);
         editorBox.setPadding(new Insets(8));
         VBox.setVgrow(bodyArea, Priority.ALWAYS);
 
-        // Bottom bar
-        HBox bottomBar = new HBox(8, newButton, saveButton, deleteButton, restoreButton);
+        HBox bottomBar = new HBox(8, newButton, saveButton, moveNotesButton, deleteButton, restoreButton);
         bottomBar.setPadding(new Insets(8));
 
         BorderPane pane = new BorderPane();
@@ -161,7 +191,7 @@ public class NotesView {
     }
 
     private void wireEvents() {
-        // Section tab selection → set active section + refresh notes
+        // Section tab change (normal mode)
         sectionTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (newTab != null && newTab.getUserData() instanceof Section s) {
                 controller.setActiveSection(s.getId());
@@ -187,9 +217,9 @@ public class NotesView {
             refreshSectionsList();
         });
 
-        // Toggle sort A-Z / Z-A for sections
+        // Toggle sections sort A-Z / Z-A
         sortSectionsButton.setOnAction(e -> {
-            List<Section> sections = controller.listSections();
+            List<Section> sections = new ArrayList<>(controller.listSections());
             if (sections.isEmpty()) {
                 return;
             }
@@ -197,14 +227,12 @@ public class NotesView {
             Section active = controller.getActiveSection();
 
             if (sectionSortAscending) {
-                // A → Z
                 sections.sort(Comparator.comparing(
                         (Section s) -> s.getName() == null ? "" : s.getName(),
                         String.CASE_INSENSITIVE_ORDER
                 ));
                 sortSectionsButton.setText("Sort Z-A");
             } else {
-                // Z → A
                 sections.sort(Comparator.comparing(
                         (Section s) -> s.getName() == null ? "" : s.getName(),
                         String.CASE_INSENSITIVE_ORDER.reversed()
@@ -216,7 +244,42 @@ public class NotesView {
             sectionSortAscending = !sectionSortAscending;
         });
 
-        // Notes selection
+        deleteSectionButton.setOnAction(e -> {
+            Tab selectedTab = sectionTabs.getSelectionModel().getSelectedItem();
+            if (selectedTab == null || !(selectedTab.getUserData() instanceof Section s)) {
+                return;
+            }
+            controller.deleteSection(s.getId());
+            refreshSectionsList();
+            refreshNotesList(controller.getListOfNotes());
+        });
+
+        // Deleted sections actions
+        restoreSectionButton.setOnAction(e -> {
+            Section s = deletedSectionsList.getSelectionModel().getSelectedItem();
+            if (s == null) return;
+            controller.restoreSection(s.getId());
+            refreshDeletedSectionsList();
+            refreshSectionsList();
+            refreshDeletedNotesForSelection();
+        });
+
+        purgeSectionButton.setOnAction(e -> {
+            Section s = deletedSectionsList.getSelectionModel().getSelectedItem();
+            if (s == null) return;
+            controller.purgeSection(s.getId());
+            refreshDeletedSectionsList();
+            refreshDeletedNotesForSelection();
+        });
+
+        // When user clicks a deleted section, show that section's deleted notes
+        deletedSectionsList.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
+            if (showingTrash) {
+                refreshDeletedNotesForSelection();
+            }
+        });
+
+        // Note selection
         notesListView.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
             if (!suppressAutoSaveOnSelection) {
                 autoSaveIfNeeded();
@@ -266,6 +329,25 @@ public class NotesView {
             }
         });
 
+        moveNotesButton.setOnAction(e -> {
+            if (showingTrash) {
+                return;
+            }
+            if (root.getScene() == null) {
+                return;
+            }
+            MoveNotesDialog dialog = new MoveNotesDialog(
+                    controller,
+                    root.getScene().getWindow(),
+                    () -> {
+                        refreshSectionsList();
+                        refreshNotesList(controller.getListOfNotes());
+                    }
+            );
+            dialog.show();
+        });
+
+        // Delete note
         deleteButton.setOnAction(e -> {
             Note selected = notesListView.getSelectionModel().getSelectedItem();
             if (selected == null) {
@@ -274,14 +356,11 @@ public class NotesView {
 
             if (!showingTrash) {
                 autoSaveIfNeeded();
-            }
-
-            if (showingTrash) {
-                controller.emptyTrash(List.of(selected.getId()));
-                refreshNotesList(controller.getDeletedNotes());
-            } else {
                 controller.deleteNote(selected.getId());
                 refreshNotesList(controller.getListOfNotes());
+            } else {
+                controller.emptyTrash(List.of(selected.getId()));
+                refreshDeletedNotesForSelection();
             }
 
             currentNote = null;
@@ -289,6 +368,7 @@ public class NotesView {
             bodyArea.clear();
         });
 
+        // Restore note in trash – ALWAYS ask which section to use
         restoreButton.setOnAction(e -> {
             if (!showingTrash) {
                 return;
@@ -299,8 +379,21 @@ public class NotesView {
                 return;
             }
 
-            controller.restoreNote(selected.getId());
-            refreshNotesList(controller.getDeletedNotes());
+            String originalSectionName = null;
+            if (selected.getSectionId() != null) {
+                Section original = controller.findSectionById(selected.getSectionId());
+                if (original != null) {
+                    originalSectionName = original.getName();
+                }
+            }
+
+            String targetSectionId = chooseSectionForRestore(originalSectionName);
+            if (targetSectionId == null) {
+                return; // user cancelled
+            }
+
+            controller.restoreNoteToSection(selected.getId(), targetSectionId);
+            refreshDeletedNotesForSelection();
 
             currentNote = null;
             titleField.clear();
@@ -313,7 +406,7 @@ public class NotesView {
             if (!showingTrash) {
                 refreshNotesList(controller.getListOfNotes());
             } else {
-                refreshNotesList(controller.getDeletedNotes());
+                refreshDeletedNotesForSelection();
             }
         });
 
@@ -326,9 +419,10 @@ public class NotesView {
             showingTrash = !showingTrash;
 
             if (showingTrash) {
-                // show ALL deleted notes, regardless of section
-                refreshNotesList(controller.getDeletedNotes());
+                refreshDeletedSectionsList();
+                refreshDeletedNotesForSelection();
             } else {
+                refreshSectionsList();
                 refreshNotesList(controller.getListOfNotes());
             }
 
@@ -357,17 +451,16 @@ public class NotesView {
     }
 
     private void refreshSectionsList() {
-        List<Section> sections = controller.listSections();
+        List<Section> sections = new ArrayList<>(controller.listSections());
         sections.sort(Comparator.comparing(
                 (Section s) -> s.getName() == null ? "" : s.getName(),
                 String.CASE_INSENSITIVE_ORDER
         ));
 
-        // If no sections exist yet, create a default one
         if (sections.isEmpty()) {
             Section created = controller.createSection("General");
             controller.setActiveSection(created.getId());
-            sections = controller.listSections();
+            sections = new ArrayList<>(controller.listSections());
             sections.sort(Comparator.comparing(
                     (Section s) -> s.getName() == null ? "" : s.getName(),
                     String.CASE_INSENSITIVE_ORDER
@@ -376,6 +469,33 @@ public class NotesView {
 
         Section active = controller.getActiveSection();
         reloadTabsWithOrder(sections, active);
+    }
+
+    private void refreshDeletedSectionsList() {
+        List<Section> deleted = new ArrayList<>(controller.listDeletedSections());
+        deleted.sort(Comparator.comparing(
+                (Section s) -> s.getName() == null ? "" : s.getName(),
+                String.CASE_INSENSITIVE_ORDER
+        ));
+        deletedSectionsList.setItems(FXCollections.observableArrayList(deleted));
+    }
+
+    // Show deleted notes belonging to selected deleted section, or all if none selected
+    private void refreshDeletedNotesForSelection() {
+        List<Note> allDeleted = controller.getDeletedNotes();
+        Section selectedSection = deletedSectionsList.getSelectionModel().getSelectedItem();
+
+        List<Note> filtered;
+        if (selectedSection == null) {
+            filtered = allDeleted;
+        } else {
+            String targetId = selectedSection.getId();
+            filtered = allDeleted.stream()
+                    .filter(n -> targetId.equals(n.getSectionId()))
+                    .toList();
+        }
+
+        refreshNotesList(filtered);
     }
 
     private void reloadTabsWithOrder(List<Section> sections, Section active) {
@@ -400,7 +520,6 @@ public class NotesView {
                     }
                 }
             }
-            // If no active section could be matched, select first
             Tab first = sectionTabs.getTabs().get(0);
             sectionTabs.getSelectionModel().select(first);
             if (first.getUserData() instanceof Section s) {
@@ -430,21 +549,27 @@ public class NotesView {
 
     private void updateModeUI() {
         if (showingTrash) {
-            modeLabel.setText("Trash (Deleted Notes)");
+            modeLabel.setText("Trash (Deleted Items)");
             trashButton.setText("Back to Notes");
 
-            // Hide section UI in trash mode
-            setNodeVisibleManaged(sectionsLabel, false);
+            setNodeVisibleManaged(sectionHeaderRow, false);
+            setNodeVisibleManaged(addSectionRow, false);
             setNodeVisibleManaged(sectionTabs, false);
-            setNodeVisibleManaged(newSectionField, false);
-            setNodeVisibleManaged(addSectionButton, false);
-            setNodeVisibleManaged(sortSectionsButton, false);
+
+            setNodeVisibleManaged(deletedSectionsLabel, true);
+            setNodeVisibleManaged(deletedSectionsList, true);
+            setNodeVisibleManaged(deletedSectionButtonsRow, true);
+
+            notesLabel.setText("Deleted Notes");
 
             newButton.setVisible(false);
             newButton.setManaged(false);
 
             saveButton.setVisible(false);
             saveButton.setManaged(false);
+
+            moveNotesButton.setVisible(false);
+            moveNotesButton.setManaged(false);
 
             searchField.setVisible(false);
             searchField.setManaged(false);
@@ -470,18 +595,24 @@ public class NotesView {
             modeLabel.setText("Notes");
             trashButton.setText("Trash");
 
-            // Show section UI in normal mode
-            setNodeVisibleManaged(sectionsLabel, true);
+            setNodeVisibleManaged(sectionHeaderRow, true);
+            setNodeVisibleManaged(addSectionRow, true);
             setNodeVisibleManaged(sectionTabs, true);
-            setNodeVisibleManaged(newSectionField, true);
-            setNodeVisibleManaged(addSectionButton, true);
-            setNodeVisibleManaged(sortSectionsButton, true);
+
+            setNodeVisibleManaged(deletedSectionsLabel, false);
+            setNodeVisibleManaged(deletedSectionsList, false);
+            setNodeVisibleManaged(deletedSectionButtonsRow, false);
+
+            notesLabel.setText("Notes");
 
             newButton.setVisible(true);
             newButton.setManaged(true);
 
             saveButton.setVisible(true);
             saveButton.setManaged(true);
+
+            moveNotesButton.setVisible(true);
+            moveNotesButton.setManaged(true);
 
             searchField.setVisible(true);
             searchField.setManaged(true);
@@ -510,5 +641,65 @@ public class NotesView {
     private void setNodeVisibleManaged(javafx.scene.Node node, boolean visible) {
         node.setVisible(visible);
         node.setManaged(visible);
+    }
+
+    // Small dialog to choose a target section to restore into
+    private String chooseSectionForRestore(String oldSectionName) {
+        List<Section> sections = new ArrayList<>(controller.listSections());
+        if (sections.isEmpty()) {
+            Section created = controller.createSection("General");
+            sections.add(created);
+        }
+
+        Stage dialog = new Stage();
+        dialog.initOwner(root.getScene().getWindow());
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Choose Section for Restore");
+
+        String oldName = (oldSectionName == null || oldSectionName.isBlank())
+                ? "(deleted/missing section)"
+                : oldSectionName;
+
+        Label label = new Label(
+                "This note previously lived in \"" + oldName + "\".\n" +
+                "Choose a section to restore it under:"
+        );
+
+        ComboBox<Section> box = new ComboBox<>();
+        box.setItems(FXCollections.observableArrayList(sections));
+        box.getSelectionModel().select(0);
+
+        Button ok = new Button("OK");
+        Button cancel = new Button("Cancel");
+
+        HBox buttonRow = new HBox(8, ok, cancel);
+        buttonRow.setPadding(new Insets(10));
+        buttonRow.setSpacing(10);
+
+        VBox content = new VBox(10, label, box, buttonRow);
+        content.setPadding(new Insets(15));
+
+        BorderPane pane = new BorderPane(content);
+        Scene scene = new Scene(pane, 420, 170);
+        dialog.setScene(scene);
+
+        final String[] resultHolder = new String[1];
+        resultHolder[0] = null;
+
+        ok.setOnAction(ev -> {
+            Section chosen = box.getValue();
+            if (chosen != null) {
+                resultHolder[0] = chosen.getId();
+            }
+            dialog.close();
+        });
+
+        cancel.setOnAction(ev -> {
+            resultHolder[0] = null;
+            dialog.close();
+        });
+
+        dialog.showAndWait();
+        return resultHolder[0];
     }
 }

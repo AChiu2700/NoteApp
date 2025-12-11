@@ -1,7 +1,6 @@
 package com.notes.repo;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,7 +10,7 @@ import com.notes.util.Clock;
 
 public class SectionRepository {
 
-    private static final String KEY = "sections";
+    private static final String STORAGE_KEY = "sections";
 
     private final LocalStorage storage;
     private final Clock clock;
@@ -22,54 +21,76 @@ public class SectionRepository {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Section> load() {
-        Object raw = storage.read(KEY);
+    private Map<String, Section> loadAll() {
+        Object raw = storage.read(STORAGE_KEY);
         if (raw instanceof Map<?, ?> map) {
-            try {
-                return (Map<String, Section>) map;
-            } catch (ClassCastException ex) {
-                return new HashMap<>();
-            }
+            return (Map<String, Section>) map;
         }
-        return new HashMap<>();
+        return new LinkedHashMap<>();
     }
 
-    private void saveAll(Map<String, Section> sections) {
-        storage.write(KEY, sections);
+    private void saveAll(Map<String, Section> data) {
+        storage.write(STORAGE_KEY, data);
     }
 
     public Section createSection(String name) {
-        Map<String, Section> sections = load();
-        Section section = new Section(name, clock.now());
-        sections.put(section.getId(), section);
-        saveAll(sections);
-        return section;
+        Map<String, Section> all = loadAll();
+        Section s = new Section(name, clock.now());
+        all.put(s.getId(), s);
+        saveAll(all);
+        return s;
     }
 
     public Section getSection(String id) {
         if (id == null) return null;
-        Map<String, Section> sections = load();
-        return sections.get(id);
+        Map<String, Section> all = loadAll();
+        return all.get(id);
     }
 
     public List<Section> listSections() {
-        Map<String, Section> sections = load();
-        return new ArrayList<>(sections.values());
+        Map<String, Section> all = loadAll();
+        return all.values().stream()
+                .filter(s -> !s.isDeleted())
+                .toList();
+    }
+
+    public List<Section> listDeletedSections() {
+        Map<String, Section> all = loadAll();
+        return all.values().stream()
+                .filter(Section::isDeleted)
+                .toList();
     }
 
     public void renameSection(String id, String newName) {
-        if (id == null) return;
-        Map<String, Section> sections = load();
-        Section section = sections.get(id);
-        if (section == null) return;
-        section.setName(newName);
-        saveAll(sections);
+        Map<String, Section> all = loadAll();
+        Section s = all.get(id);
+        if (s == null) return;
+        s.setName(newName);
+        saveAll(all);
     }
 
+    // soft delete (goes to section trash)
     public void deleteSection(String id) {
-        if (id == null) return;
-        Map<String, Section> sections = load();
-        sections.remove(id);
-        saveAll(sections);
+        Map<String, Section> all = loadAll();
+        Section s = all.get(id);
+        if (s == null) return;
+        s.markDeleted(clock.now());
+        saveAll(all);
+    }
+
+    public void restoreSection(String id) {
+        Map<String, Section> all = loadAll();
+        Section s = all.get(id);
+        if (s == null) return;
+        s.clearDeleted();
+        saveAll(all);
+    }
+
+    // permanent remove from storage
+    public void purgeSection(String id) {
+        Map<String, Section> all = loadAll();
+        if (all.remove(id) != null) {
+            saveAll(all);
+        }
     }
 }

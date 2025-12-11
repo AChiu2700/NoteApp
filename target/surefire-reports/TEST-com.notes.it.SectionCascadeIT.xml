@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.notes.repo.TrashTest" time="0.007" tests="2" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.notes.it.SectionCascadeIT" time="0.073" tests="2" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -59,6 +59,6 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="add_onlyStoresNotesThatAreMarkedDeleted" classname="com.notes.repo.TrashTest" time="0.003"/>
-  <testcase name="purgeExpired_removesNotesBeyondRetentionDays" classname="com.notes.repo.TrashTest" time="0.001"/>
+  <testcase name="deleteSection_softDeletesNotesInThatSection" classname="com.notes.it.SectionCascadeIT" time="0.031"/>
+  <testcase name="restoreSection_restoresNotesInThatSection" classname="com.notes.it.SectionCascadeIT" time="0.042"/>
 </testsuite>
