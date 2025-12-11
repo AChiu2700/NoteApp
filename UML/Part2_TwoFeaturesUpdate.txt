@@ -1,0 +1,232 @@
+@startuml
+title Class Diagram: Note App with Sections and Manual Sort (Note-Centered)
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam nodesep 100
+skinparam ranksep 100
+skinparam shadowing false
+
+' ===========================
+' CORE DOMAIN + MEMENTO
+' ===========================
+class Note <<originator>> {
+  - id: String
+  - title: String
+  - content: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  - deletedAt: DateTime?
+  - manualOrder: int
+  - sectionId: String
+  + getId(): String
+  + getTitle(): String
+  + getContent(): String
+  + getCreatedAt(): DateTime
+  + getUpdatedAt(): DateTime
+  + getDeletedAt(): DateTime?
+  + getManualOrder(): int
+  + setManualOrder(order: int)
+  + getSectionId(): String
+  + setSectionId(id: String)
+  + updateTitle(t: String)
+  + updateContent(c: String)
+  + markDeleted(now: DateTime)
+  + clearDelete()
+  + isDeleted(): boolean
+  + createMemento(): NoteMemento
+  + restore(m: NoteMemento)
+}
+
+class NoteMemento <<memento>> {
+  - id: String
+  - title: String
+  - content: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  - deletedAt: DateTime?
+  - manualOrder: int
+  - sectionId: String
+}
+
+class NoteRepository {
+  - storage: LocalStorage
+  + createNote(title: String, body: String, sectionId: String): Note
+  + getNoteById(id: String): Note
+  + listNotes(): List<Note>
+  + listDeleted(): List<Note>
+  + listBySection(sectionId: String): List<Note>
+  + save(note: Note)
+  + moveToTrash(noteId: String)
+  + restoreFromTrash(noteId: String)
+  + purgeDeletedNotes(noteId: String)
+}
+
+class Trash <<caretaker>> {
+  - retentionDays: int = 30
+  - deleted: List<Note>
+  - snapshots: Map<String, NoteMemento>
+  - clock: Clock
+  + add(note: Note)
+  + remove(note: Note)
+  + listDeleted(): List<Note>
+  + getSnapshot(noteId: String): NoteMemento
+  + purgeExpired()
+  + getRetentionDays(): int
+}
+
+' ===========================
+' SECTIONS FEATURE
+' ===========================
+class Section {
+  - id: String
+  - name: String
+  - createdAt: DateTime
+  - manualOrder: int
+  + getId(): String
+  + getName(): String
+  + setName(name: String)
+  + getCreatedAt(): DateTime
+  + getManualOrder(): int
+  + setManualOrder(order: int)
+}
+
+class SectionRepository {
+  - storage: LocalStorage
+  + createSection(name: String): Section
+  + getSection(id: String): Section
+  + listSections(): List<Section>
+  + renameSection(id: String, newName: String)
+  + deleteSection(id: String)
+  + save(section: Section)
+}
+
+' ===========================
+' SORTING STRATEGY
+' ===========================
+class SortPreference <<strategy-context>> {
+  - sortOrder: SortOrder
+  + getSortOrder(): SortOrder
+  + setSortOrder(order: SortOrder)
+  + applyToNotes(notes: List<Note>): List<Note>
+  + applyToSections(sections: List<Section>): List<Section>
+}
+
+enum SortOrder {
+  LastModified
+  CreatedDate
+  TitleAZ
+  Manual
+}
+
+' ===========================
+' SEARCH (SINGLETON)
+' ===========================
+class SearchIndex <<singleton>> {
+  - instance: SearchIndex
+  - snapshot: List<Note>
+  - SearchIndex()
+  + getInstance(): SearchIndex
+  + index(notes: List<Note>)
+  + search(query: String): List<Note>
+}
+
+' ===========================
+' APP FACADE
+' ===========================
+class AppController <<facade>> {
+  - noteRepository: NoteRepository
+  - trash: Trash
+  - searchIndex: SearchIndex
+  - sortPreference: SortPreference
+  - sectionRepository: SectionRepository
+  - activeSectionId: String
+  + newNote(): Note
+  + openNote(id: String): Note
+  + editNote(id: String, title: String, body: String)
+  + deleteNote(id: String)
+  + restoreNote(id: String)
+  + emptyTrash(ids: List<String>)
+  + search(q: String): List<Note>
+  + setSort(order: SortOrder)
+  + getList(): List<Note>
+  + getDeletedNotes(): List<Note>
+  + listSections(): List<Section>
+  + createSection(name: String): Section
+  + renameSection(id: String, name: String)
+  + deleteSection(id: String)
+  + setActiveSection(sectionId: String)
+  + getActiveSection(): Section
+  + moveNoteToSection(noteId: String, sectionId: String)
+  + setManualOrder(noteId: String, order: int)
+  + setSectionOrder(sectionId: String, order: int)
+}
+
+' ===========================
+' STORAGE (ADAPTER)
+' ===========================
+interface LocalStorage {
+  + read(key: String): Any
+  + write(key: String, value: Any)
+  + delete(key: String)
+}
+
+class InMemoryLocalStorage <<adapter>> {
+  - storage: Map<String, Any>
+  - filePath: Path
+  + InMemoryLocalStorage()
+  + InMemoryLocalStorage(filename: String)
+  + read(key: String): Any
+  + write(key: String, value: Any)
+  + delete(key: String)
+}
+
+' ===========================
+' LAYOUT HINTS (NOTE-CENTERED)
+' ===========================
+' Keep core collaborators grouped so Note tends to be central
+together {
+  class Note
+  class NoteMemento
+  class NoteRepository
+  class Section
+  class Trash
+  class SortPreference
+}
+
+' Directional hints around Note
+NoteRepository -down- Note
+Section -up- Note
+Trash -right- Note
+SortPreference -left- Note
+
+' ===========================
+' RELATIONSHIPS
+' ===========================
+NoteRepository "1" *-- "0..*" Note : manages
+NoteRepository "1" --> "1" LocalStorage : uses
+
+Trash "1" o-- "0..*" Note : keeps deleted
+Trash ..> NoteMemento : stores snapshots
+
+SectionRepository "1" *-- "0..*" Section : manages
+SectionRepository "1" --> "1" LocalStorage : uses
+
+Section "1" o-- "0..*" Note : groups
+
+AppController "1" --> "1" NoteRepository : uses
+AppController "1" --> "1" Trash : uses
+AppController "1" --> "1" SearchIndex : uses
+AppController "1" --> "1" SortPreference : uses
+AppController "1" --> "1" SectionRepository : uses
+
+SearchIndex ..> Note : indexes
+SortPreference ..> Note : sorts notes
+SortPreference ..> Section : sorts sections
+
+SortPreference "1" --> "1" SortOrder
+
+InMemoryLocalStorage ..|> LocalStorage
+
+Note "1" --> "0..*" NoteMemento : creates snapshots
+
+@enduml
