@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.notes.model.Note;
 import com.notes.repo.NoteRepository;
+import com.notes.repo.SectionRepository;
 import com.notes.repo.Trash;
 import com.notes.search.SearchIndex;
 import com.notes.sort.SortOrder;
@@ -29,10 +30,10 @@ class AppControllerTest {
         Clock clock = () -> Instant.parse("2025-01-01T00:00:00Z");
         repo = new NoteRepository(storage, clock);
         Trash trash = new Trash(30, clock);
-        // Singleton Pattern: SearchIndex
         SearchIndex index = SearchIndex.getInstance();
         SortPreference sortPref = new SortPreference();
-        controller = new AppController(repo, trash, index, sortPref);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
+        controller = new AppController(repo, trash, index, sortPref, sectionRepo);
     }
 
     @Test

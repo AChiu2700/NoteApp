@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.notes.app.AppController;
 import com.notes.model.Note;
 import com.notes.repo.NoteRepository;
+import com.notes.repo.SectionRepository;
 import com.notes.repo.Trash;
 import com.notes.search.SearchIndex;
 import com.notes.sort.SortOrder;
@@ -27,7 +28,8 @@ class DeleteRestoreIT {
         SearchIndex index = SearchIndex.getInstance();
         SortPreference sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.LastModified);
-        return new AppController(repo, trash, index, sortPref);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
+        return new AppController(repo, trash, index, sortPref, sectionRepo);
     }
 
     @Test
@@ -72,6 +74,7 @@ class DeleteRestoreIT {
         int afterRestoreSize = notesAfterRestore.size();
         assertEquals(initialSize + 1, afterRestoreSize);
 
+        // Find the restored note by id (since there may be many notes)
         Note restored = notesAfterRestore.stream()
                 .filter(n -> n.getId().equals(note.getId()))
                 .findFirst()

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import com.notes.app.AppController;
 import com.notes.model.Note;
 import com.notes.repo.NoteRepository;
+import com.notes.repo.SectionRepository;
 import com.notes.repo.Trash;
 import com.notes.search.SearchIndex;
 import com.notes.sort.SortOrder;
@@ -29,8 +30,9 @@ class SearchAndSort {
         SearchIndex index = SearchIndex.getInstance();
         var sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.LastModified);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
 
-        AppController ctrl = new AppController(repo, trash, index, sortPref);
+        AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
         Note n1 = ctrl.newNote();
         ctrl.editNote(n1.getId(), "Project B", "details");
@@ -71,8 +73,9 @@ class SearchAndSort {
         SearchIndex index = SearchIndex.getInstance();
         var sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.LastModified);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
 
-        AppController ctrl = new AppController(repo, trash, index, sortPref);
+        AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
         // First note: older updatedAt
         Note n1 = ctrl.newNote();
@@ -122,8 +125,9 @@ class SearchAndSort {
         SearchIndex index = SearchIndex.getInstance();
         var sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.CreatedDate);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
 
-        AppController ctrl = new AppController(repo, trash, index, sortPref);
+        AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
         // Older note (created first)
         Note n1 = ctrl.newNote(); 
