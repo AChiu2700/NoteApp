@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.notes.app.AppController;
 import com.notes.model.Note;
 import com.notes.repo.NoteRepository;
+import com.notes.repo.SectionRepository;
 import com.notes.repo.Trash;
 import com.notes.search.SearchIndex;
 import com.notes.sort.SortOrder;
@@ -26,10 +27,11 @@ class CreateAndAutoSaveIT {
         NoteRepository repo = new NoteRepository(storage, clock);
         Trash trash = new Trash(30, clock);
         SearchIndex index = SearchIndex.getInstance();
-        SortPreference sortPref = new SortPreference();
+        var sortPref = new SortPreference();
         sortPref.setSortOrder(SortOrder.LastModified);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
 
-        AppController ctrl = new AppController(repo, trash, index, sortPref);
+        AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
 
         Note note = ctrl.newNote();
         ctrl.editNote(note.getId(), "Title A", "Body");
