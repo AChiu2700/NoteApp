@@ -1,0 +1,85 @@
+@startuml
+title Class Diagram: Kotlin UI / Screen Display
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam shadowing false
+
+' ==== CORE TYPES FROM DOMAIN (REFERENCED) ====
+class AppController
+class Note
+class Section
+enum NotesMode
+enum SortOption
+
+' ==== ANDROID ENTRYPOINT ====
+class MainActivity <<Activity>> {
+  - controller: AppController
+  + onCreate(savedInstanceState: Bundle?)
+}
+
+' ==== MAIN SCREEN (COMPOSABLE) ====
+class NotesScreen <<Composable>> {
+  + invoke(controller: AppController)
+}
+
+' Optional: represent internal UI state as notes
+class EditorState {
+  - currentNote: Note?
+  - title: String
+  - body: String
+}
+
+class DialogState {
+  - showSectionSheet: Boolean
+  - showRestoreDialog: Boolean
+  - noteToRestore: Note?
+  - showDeleteNoteDialog: Boolean
+  - noteToDelete: Note?
+  - showNewSectionDialog: Boolean
+  - showDeleteSectionDialog: Boolean
+  - sectionToDelete: Section?
+  - showMoveNoteDialog: Boolean
+  - noteToMove: Note?
+  - showRenameSectionDialog: Boolean
+  - sectionToRename: Section?
+}
+
+' ==== COMPOSABLE PARTS MODULE ====
+class NotesScreenParts <<Composable Module>> {
+  .. Top-level composables ..
+  + rememberFilteredSortedNotes(
+      notes: List<Note>,
+      searchQuery: String,
+      sortOption: SortOption
+    ): List<Note>
+  + NotesScreenContent(...)
+  + SearchAndSortRow(...)
+  + NotesList(...)
+  + NoteEditorScreen(...)
+  + SectionSheet(...)
+  + RestoreNoteDialog(...)
+  + NewSectionDialog(...)
+  + RenameSectionDialog(...)
+  + SectionDeleteDialog(...)
+  + MoveNoteDialog(...)
+  + NoteDeleteDialog(...)
+}
+
+' ==== RELATIONSHIPS ====
+MainActivity --> AppController : creates / holds
+MainActivity --> NotesScreen : sets as content
+
+NotesScreen --> AppController : uses for all actions
+NotesScreen ..> NotesScreenParts : calls composables
+NotesScreen ..> EditorState
+NotesScreen ..> DialogState
+
+NotesScreenParts ..> Note
+NotesScreenParts ..> Section
+NotesScreenParts ..> NotesMode
+NotesScreenParts ..> SortOption
+
+@enduml
