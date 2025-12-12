@@ -1,0 +1,54 @@
+# ===== Android Studio / IntelliJ =====
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# ===== Gradle =====
+.gradle/
+build/
+*/build/
+
+# ===== Local configuration =====
+local.properties
+
+# ===== Logs =====
+*.log
+
+# ===== OS generated files =====
+.DS_Store
+Thumbs.db
+
+# ===== APK / AAB =====
+*.apk
+*.aab
+
+# ===== Java / Kotlin =====
+*.class
+
+# ===== Keystore files =====
+*.jks
+*.keystore
+
+# ===== Coverage / Reports =====
+coverage/
+*.ec
+*.exec
+
+# ===== Temporary files =====
+*.swp
+*.swo
+*~
+
+# ===== Android profiling =====
+captures/
+
+# ===== Fastlane (if ever added) =====
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# ===== Firebase (if ever added) =====
+google-services.json
