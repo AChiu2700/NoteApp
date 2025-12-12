@@ -1,0 +1,157 @@
+package com.example.notes.app;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.example.notes.app.AppController;
+import com.example.notes.data.InMemoryLocalStorage;
+import com.example.notes.data.LocalStorage;
+import com.example.notes.domain.NoteRepository;
+import com.example.notes.domain.SectionRepository;
+import com.example.notes.data.Trash;
+import com.example.notes.model.Note;
+import com.example.notes.domain.SearchIndex;
+import com.example.notes.domain.SortOrder;
+import com.example.notes.domain.SortPreference;
+import com.example.notes.data.Clock;
+
+class SearchAndSort {
+
+    private SearchIndex index;
+
+    @BeforeEach
+    void resetIndex() {
+        index = SearchIndex.getInstance();
+        index.index(new ArrayList<>());
+    }
+
+    @Test
+    void searchAndSort_projectsByTitleAscending() {
+        LocalStorage storage = new InMemoryLocalStorage();
+        Clock clock = () -> Instant.parse("2025-01-01T00:00:00Z");
+        NoteRepository repo = new NoteRepository(storage, clock);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
+        Trash trash = new Trash(30, clock);
+
+        var sortPref = new SortPreference(storage);
+        sortPref.setSortOrder(SortOrder.LastModified);
+        AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
+
+
+        Note n1 = ctrl.newNote();
+        ctrl.editNote(n1.getId(), "Project B", "details");
+        Note n2 = ctrl.newNote();
+        ctrl.editNote(n2.getId(), "Project A", "more details");
+
+        index.index(ctrl.getListOfNotes());
+        List<Note> hits = index.search("project");
+
+        var pref = new SortPreference(storage);
+        pref.setSortOrder(SortOrder.TitleAZ);
+
+        List<String> sortedTitlesDistinct = pref.apply(hits).stream()
+                .map(Note::getTitle)
+                .distinct()
+                .toList();
+
+        assertEquals(List.of("Project A", "Project B"), sortedTitlesDistinct);
+    }
+
+    @Test
+    void searchAndSort_byLastModifiedDescending() {
+        LocalStorage storage = new InMemoryLocalStorage();
+
+        Clock clock = new Clock() {
+            private long calls = 0;
+
+            @Override
+            public Instant now() {
+                return Instant.parse("2025-01-01T00:00:00Z").plusSeconds(calls++);
+            }
+        };
+
+        NoteRepository repo = new NoteRepository(storage, clock);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
+        Trash trash = new Trash(30, clock);
+        var sortPref = new SortPreference(storage);
+        sortPref.setSortOrder(SortOrder.LastModified);
+
+        AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
+
+        Note n1 = ctrl.newNote();
+        ctrl.editNote(n1.getId(), "A", "first");
+
+        Note n2 = ctrl.newNote();
+        ctrl.editNote(n2.getId(), "B", "second");
+
+        index.index(ctrl.getListOfNotes());
+        List<Note> hits = index.search("");
+
+        var pref = new SortPreference(storage);
+        pref.setSortOrder(SortOrder.LastModified);
+        List<String> sortedTitles = pref.apply(hits).stream()
+                .map(Note::getTitle)
+                .toList();
+
+        assertTrue(sortedTitles.contains("A"));
+        assertTrue(sortedTitles.contains("B"));
+
+        int idxB = sortedTitles.indexOf("B");
+        int idxA = sortedTitles.indexOf("A");
+
+        assertTrue(idxB >= 0 && idxA >= 0);
+        assertTrue(idxB < idxA);
+    }
+
+    @Test
+    void searchAndSort_byCreatedDateDescending() {
+        LocalStorage storage = new InMemoryLocalStorage();
+
+        Clock clock = new Clock() {
+            private long calls = 0;
+
+            @Override
+            public Instant now() {
+                return Instant.parse("2025-01-01T00:00:00Z").plusSeconds(calls++);
+            }
+        };
+
+        NoteRepository repo = new NoteRepository(storage, clock);
+        SectionRepository sectionRepo = new SectionRepository(storage, clock);
+        Trash trash = new Trash(30, clock);
+        var sortPref = new SortPreference(storage);
+        sortPref.setSortOrder(SortOrder.CreatedDate);
+
+        AppController ctrl = new AppController(repo, trash, index, sortPref, sectionRepo);
+
+        Note n1 = ctrl.newNote();
+        ctrl.editNote(n1.getId(), "Older", "first");
+
+        Note n2 = ctrl.newNote();
+        ctrl.editNote(n2.getId(), "Newer", "second");
+
+        index.index(ctrl.getListOfNotes());
+        List<Note> hits = index.search("");
+
+        var pref = new SortPreference(storage);
+        pref.setSortOrder(SortOrder.CreatedDate);
+        List<String> sortedTitles = pref.apply(hits).stream()
+                .map(Note::getTitle)
+                .toList();
+
+        assertTrue(sortedTitles.contains("Older"));
+        assertTrue(sortedTitles.contains("Newer"));
+
+        int idxNewer = sortedTitles.indexOf("Newer");
+        int idxOlder = sortedTitles.indexOf("Older");
+
+        assertTrue(idxNewer >= 0 && idxOlder >= 0);
+        assertTrue(idxNewer < idxOlder);
+    }
+}
