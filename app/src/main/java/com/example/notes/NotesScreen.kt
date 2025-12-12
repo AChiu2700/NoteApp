@@ -346,6 +346,7 @@ fun NotesScreen(controller: AppController) {
         if (dialogState.showDeleteSectionDialog && dialogState.sectionToDelete != null) {
             SectionDeleteDialog(
                 section = dialogState.sectionToDelete!!,
+                isTrash = isInTrash,
                 onDismiss = {
                     dialogState = dialogState.copy(
                         showDeleteSectionDialog = false,
@@ -353,7 +354,11 @@ fun NotesScreen(controller: AppController) {
                     )
                 },
                 onConfirmDelete = { section ->
-                    controller.deleteSection(section.id)
+                    if (isInTrash) {
+                        controller.deleteSectionPermanently(section.id)
+                    } else {
+                        controller.deleteSection(section.id)
+                    }
                     if (activeSection?.id == section.id) {
                         controller.setActiveSection(null)
                     }

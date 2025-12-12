@@ -388,8 +388,16 @@ internal fun SectionSheet(
                     }
 
                     if (isTrash) {
-                        TextButton(onClick = { onSectionSelected(section) }) {
-                            Text("Restore")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { onSectionSelected(section) }) {
+                                Text("Restore")
+                            }
+                            TextButton(onClick = { onDeleteSection(section) }) {
+                                Text(
+                                    text = "Delete",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -575,6 +583,7 @@ internal fun RenameSectionDialog(
 @Composable
 internal fun SectionDeleteDialog(
     section: Section,
+    isTrash: Boolean,
     onDismiss: () -> Unit,
     onConfirmDelete: (Section) -> Unit
 ) {
@@ -583,12 +592,16 @@ internal fun SectionDeleteDialog(
         title = { Text("Delete section") },
         text = {
             Text(
-                "Delete the entire section \"${section.getName() ?: "General"}\" and move its notes to trash?"
+                if (isTrash) {
+                    "Permanently delete the section \"${section.getName() ?: "General"}\"? This cannot be undone."
+                } else {
+                    "Delete the entire section \"${section.getName() ?: "General"}\" and move its notes to trash?"
+                }
             )
         },
         confirmButton = {
             TextButton(onClick = { onConfirmDelete(section) }) {
-                Text("Delete section")
+                Text(if (isTrash) "Delete forever" else "Delete section")
             }
         },
         dismissButton = {

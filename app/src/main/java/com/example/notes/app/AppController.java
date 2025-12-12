@@ -154,7 +154,7 @@ public class AppController {
         sectionRepository.renameSection(id, newName);
     }
 
-    // UPDATED: When deleting a section, delete its notes too
+    // When deleting a section, delete its notes too (soft delete -> move section into Deleted Sections)
     public void deleteSection(String id) {
         if (id == null) return;
 
@@ -175,11 +175,51 @@ public class AppController {
         }
     }
 
+    // ✅ Permanent delete: removes the section from storage AND permanently deletes its notes.
+    // Intended to be called when the user is in Trash.
+    public void deleteSectionPermanently(String id) {
+        if (id == null) return;
+
+        // 1) Permanently delete any non-deleted notes in that section.
+        List<Note> liveNotes = noteRepository.listBySection(id);
+        for (Note n : liveNotes) {
+            if (n == null) continue;
+
+            // Ensure it's in deleted state so purgeDeletedNotes can remove it.
+            if (n.getDeletedAt() == null) {
+                noteRepository.moveToTrash(n.getId());
+                if (n.getDeletedAt() != null) {
+                    trash.add(n);
+                }
+            }
+
+            noteRepository.purgeDeletedNotes(n.getId());
+            trash.remove(n);
+        }
+
+        // 2) Permanently delete any already-deleted notes that still reference this section.
+        List<Note> deleted = noteRepository.listDeleted();
+        for (Note n : deleted) {
+            if (n == null) continue;
+            if (id.equals(n.getSectionId())) {
+                noteRepository.purgeDeletedNotes(n.getId());
+                trash.remove(n);
+            }
+        }
+
+        // 3) Permanently remove the section itself.
+        sectionRepository.purgeSection(id);
+
+        if (id.equals(activeSectionId)) {
+            activeSectionId = null;
+        }
+    }
+
     public List<Section> listDeletedSections() {
         return sectionRepository.listDeletedSections();
     }
 
-    // UPDATED: When restoring a section, restore its notes too
+    // When restoring a section, restore its notes too
     public void restoreSection(String id) {
         if (id == null) return;
 
